@@ -41,6 +41,7 @@ function App() {
             </AdminRoute>
           }
         />
+
         <Route
           path="/admin/medicines"
           element={
@@ -49,7 +50,11 @@ function App() {
             </AdminRoute>
           }
         />
-        <Route path="/admin/lab-tests" element={<LabTests />} />
+
+        <Route
+          path="/admin/lab-tests"
+          element={<LabTests />}
+        />
       </Routes>
     </BrowserRouter>
   );

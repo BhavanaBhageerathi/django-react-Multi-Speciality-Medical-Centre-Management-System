@@ -10,6 +10,7 @@ class Department(models.Model):
     def __str__(self):
         return self.name
 
+
 class Staff(models.Model):
 
     ROLE_CHOICES = [
@@ -91,6 +92,7 @@ class Staff(models.Model):
             f"{self.user.get_full_name()}"
         )
 
+
 class DoctorProfile(models.Model):
     staff = models.OneToOneField(
         Staff,
@@ -109,6 +111,7 @@ class DoctorProfile(models.Model):
 
     def __str__(self):
         return f"{self.staff.user.get_full_name()} - {self.department.name}"
+
 
 class Medicine(models.Model):
 
@@ -159,6 +162,7 @@ class Medicine(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.strength}"
+
 
 class LabTest(models.Model):
 
