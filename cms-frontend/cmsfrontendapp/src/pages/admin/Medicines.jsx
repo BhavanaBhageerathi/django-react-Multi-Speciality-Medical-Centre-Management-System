@@ -1,618 +1,1498 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function Medicines() {
-  const [medicines, setMedicines] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    generic_name: "",
-    brand_name: "",
-    formulation: "",
-    strength: "",
-    unit: "",
-  });
+    // =========================================================
+    // STATE
+    // =========================================================
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+    const [medicines, setMedicines] = useState([]);
 
-  const API_URL = "http://127.0.0.1:8000/api/admin/medicines/";
+    const [loading, setLoading] = useState(true);
 
-  // Get the correct JWT access token
-  const getToken = () => {
-    return localStorage.getItem("accessToken");
-  };
+    const [submitting, setSubmitting] = useState(false);
 
-  // Fetch all medicines
-  const fetchMedicines = async () => {
-    try {
-      setLoading(true);
-      setError("");
+    const [searchTerm, setSearchTerm] = useState("");
 
-      const token = getToken();
+    const [showForm, setShowForm] = useState(false);
 
-      if (!token) {
-        throw new Error("Authentication token not found. Please login again.");
-      }
+    const [message, setMessage] = useState("");
 
-      const response = await fetch(API_URL, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+    const [error, setError] = useState("");
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.detail || "Failed to fetch medicines."
-        );
-      }
-
-      setMedicines(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMedicines();
-  }, []);
-
-  // Handle form changes
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
+    const [formData, setFormData] = useState({
+        name: "",
+        generic_name: "",
+        brand_name: "",
+        formulation: "",
+        strength: "",
+        unit: "",
     });
-  };
 
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      generic_name: "",
-      brand_name: "",
-      formulation: "",
-      strength: "",
-      unit: "",
-    });
-  };
 
-  // Add medicine
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    const API_URL =
+        "http://127.0.0.1:8000/api/admin/medicines/";
 
-    setMessage("");
-    setError("");
 
-    if (!formData.name.trim()) {
-      setError("Medicine name is required.");
-      return;
-    }
+    // =========================================================
+    // TOKEN
+    // =========================================================
 
-    if (!formData.formulation.trim()) {
-      setError("Formulation is required.");
-      return;
-    }
+    const getToken = () => {
 
-    try {
-      const token = getToken();
-
-      if (!token) {
-        throw new Error("Authentication token not found. Please login again.");
-      }
-
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          generic_name: formData.generic_name.trim(),
-          brand_name: formData.brand_name.trim(),
-          formulation: formData.formulation.trim(),
-          strength: formData.strength.trim(),
-          unit: formData.unit.trim(),
-          is_active: true,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.name?.[0] ||
-            data.detail ||
-            "Failed to create medicine."
+        return localStorage.getItem(
+            "accessToken"
         );
-      }
 
-      setMessage("Medicine added successfully.");
+    };
 
-      resetForm();
 
-      await fetchMedicines();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+    // =========================================================
+    // FETCH MEDICINES
+    // =========================================================
 
-  // Activate / deactivate medicine
-  const toggleMedicine = async (medicine) => {
-    setMessage("");
-    setError("");
+    const fetchMedicines = async () => {
 
-    try {
-      const token = getToken();
+        try {
 
-      if (!token) {
-        throw new Error("Authentication token not found. Please login again.");
-      }
+            setLoading(true);
 
-      const response = await fetch(
-        `${API_URL}${medicine.id}/`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            is_active: !medicine.is_active,
-          }),
+            setError("");
+
+            const token = getToken();
+
+
+            if (!token) {
+
+                throw new Error(
+                    "Authentication token not found. Please login again."
+                );
+
+            }
+
+
+            const response =
+                await fetch(API_URL, {
+
+                    method: "GET",
+
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`,
+
+                        "Content-Type":
+                            "application/json",
+                    },
+
+                });
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Failed to fetch medicines."
+                );
+
+            }
+
+
+            setMedicines(
+                Array.isArray(data)
+                    ? data
+                    : []
+            );
+
+        } catch (err) {
+
+            console.error(
+                "FETCH MEDICINES ERROR:",
+                err
+            );
+
+            setError(
+                err.message ||
+                "Unable to load medicines."
+            );
+
+        } finally {
+
+            setLoading(false);
+
         }
-      );
 
-      const data = await response.json();
+    };
 
-      if (!response.ok) {
-        throw new Error(
-          data.detail || "Failed to update medicine."
+
+    // =========================================================
+    // INITIAL LOAD
+    // =========================================================
+
+    useEffect(() => {
+
+        fetchMedicines();
+
+    }, []);
+
+
+    // =========================================================
+    // FORM CHANGE
+    // =========================================================
+
+    const handleChange = (event) => {
+
+        const {
+            name,
+            value
+        } = event.target;
+
+
+        setFormData(
+            (previous) => ({
+                ...previous,
+                [name]: value,
+            })
         );
-      }
 
-      setMessage(
-        `Medicine ${
-          medicine.is_active ? "deactivated" : "activated"
-        } successfully.`
-      );
 
-      await fetchMedicines();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+        setMessage("");
 
-  return (
-    <div className="container-fluid py-4">
+        setError("");
 
-      {/* Page Header */}
-      <div className="mb-4">
-        <h1 className="fw-bold mb-1">
-          Medicine Master
-        </h1>
+    };
 
-        <p className="text-muted mb-0">
-          Manage medicines, formulations, strengths and active status.
-        </p>
-      </div>
 
-      {/* Messages */}
-      {message && (
-        <div
-          className="alert alert-success alert-dismissible fade show"
-          role="alert"
-        >
-          {message}
+    // =========================================================
+    // RESET FORM
+    // =========================================================
 
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => setMessage("")}
-          ></button>
-        </div>
-      )}
+    const resetForm = () => {
 
-      {error && (
-        <div
-          className="alert alert-danger alert-dismissible fade show"
-          role="alert"
-        >
-          {error}
+        setFormData({
+            name: "",
+            generic_name: "",
+            brand_name: "",
+            formulation: "",
+            strength: "",
+            unit: "",
+        });
 
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => setError("")}
-          ></button>
-        </div>
-      )}
+        setError("");
 
-      {/* Add Medicine Card */}
-      <div className="card shadow-sm mb-4">
+    };
 
-        <div className="card-header bg-white py-3">
-          <h5 className="mb-1 fw-semibold">
-            Add Medicine
-          </h5>
 
-          <small className="text-muted">
-            Enter the medicine details below.
-          </small>
-        </div>
+    // =========================================================
+    // OPEN / CLOSE FORM
+    // =========================================================
 
-        <div className="card-body">
+    const toggleForm = () => {
 
-          <form onSubmit={handleSubmit}>
+        setShowForm(
+            (previous) => !previous
+        );
 
-            <div className="row g-3">
+        setMessage("");
 
-              {/* Medicine Name */}
-              <div className="col-md-6 col-lg-4">
-                <label className="form-label fw-semibold">
-                  Medicine Name <span className="text-danger">*</span>
-                </label>
+        setError("");
 
-                <input
-                  type="text"
-                  className="form-control"
-                  name="name"
-                  placeholder="e.g. Paracetamol"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+    };
 
-              {/* Generic Name */}
-              <div className="col-md-6 col-lg-4">
-                <label className="form-label fw-semibold">
-                  Generic Name
-                </label>
 
-                <input
-                  type="text"
-                  className="form-control"
-                  name="generic_name"
-                  placeholder="e.g. Paracetamol"
-                  value={formData.generic_name}
-                  onChange={handleChange}
-                />
-              </div>
+    // =========================================================
+    // ADD MEDICINE
+    // =========================================================
 
-              {/* Brand Name */}
-              <div className="col-md-6 col-lg-4">
-                <label className="form-label fw-semibold">
-                  Brand Name
-                </label>
+    const handleSubmit = async (event) => {
 
-                <input
-                  type="text"
-                  className="form-control"
-                  name="brand_name"
-                  placeholder="e.g. Crocin"
-                  value={formData.brand_name}
-                  onChange={handleChange}
-                />
-              </div>
+        event.preventDefault();
 
-              {/* Formulation */}
-              <div className="col-md-6 col-lg-4">
-                <label className="form-label fw-semibold">
-                  Formulation <span className="text-danger">*</span>
-                </label>
+        setMessage("");
 
-                <select
-                  className="form-select"
-                  name="formulation"
-                  value={formData.formulation}
-                  onChange={handleChange}
-                  required
+        setError("");
+
+
+        // -----------------------------------------------------
+        // FRONTEND VALIDATION
+        // -----------------------------------------------------
+
+        if (!formData.name.trim()) {
+
+            setError(
+                "Medicine name is required."
+            );
+
+            return;
+
+        }
+
+
+        if (!formData.formulation.trim()) {
+
+            setError(
+                "Formulation is required."
+            );
+
+            return;
+
+        }
+
+
+        try {
+
+            setSubmitting(true);
+
+
+            const token = getToken();
+
+
+            if (!token) {
+
+                throw new Error(
+                    "Authentication token not found. Please login again."
+                );
+
+            }
+
+
+            const response =
+                await fetch(API_URL, {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json",
+
+                        Authorization:
+                            `Bearer ${token}`,
+
+                    },
+
+                    body: JSON.stringify({
+
+                        name:
+                            formData.name.trim(),
+
+                        generic_name:
+                            formData.generic_name.trim(),
+
+                        brand_name:
+                            formData.brand_name.trim(),
+
+                        formulation:
+                            formData.formulation.trim(),
+
+                        strength:
+                            formData.strength.trim(),
+
+                        unit:
+                            formData.unit.trim(),
+
+                        is_active: true,
+
+                    }),
+
+                });
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+
+                    data.name?.[0] ||
+
+                    data.detail ||
+
+                    "Failed to create medicine."
+
+                );
+
+            }
+
+
+            setMessage(
+                "Medicine added successfully."
+            );
+
+
+            resetForm();
+
+            await fetchMedicines();
+
+        } catch (err) {
+
+            console.error(
+                "ADD MEDICINE ERROR:",
+                err
+            );
+
+            setError(
+                err.message ||
+                "Unable to add medicine."
+            );
+
+        } finally {
+
+            setSubmitting(false);
+
+        }
+
+    };
+
+
+    // =========================================================
+    // ACTIVATE / DEACTIVATE
+    // =========================================================
+
+    const toggleMedicine =
+        async (medicine) => {
+
+            setMessage("");
+
+            setError("");
+
+
+            const action =
+                medicine.is_active
+                    ? "deactivate"
+                    : "activate";
+
+
+            const confirmed =
+                window.confirm(
+
+                    `Are you sure you want to ${action} "${medicine.name}"?`
+
+                );
+
+
+            if (!confirmed) {
+
+                return;
+
+            }
+
+
+            try {
+
+                const token =
+                    getToken();
+
+
+                if (!token) {
+
+                    throw new Error(
+                        "Authentication token not found. Please login again."
+                    );
+
+                }
+
+
+                const response =
+                    await fetch(
+
+                        `${API_URL}${medicine.id}/`,
+
+                        {
+
+                            method: "PATCH",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json",
+
+                                Authorization:
+                                    `Bearer ${token}`,
+
+                            },
+
+                            body:
+                                JSON.stringify({
+
+                                    is_active:
+                                        !medicine.is_active,
+
+                                }),
+
+                        }
+
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+
+                        data.detail ||
+
+                        "Failed to update medicine."
+
+                    );
+
+                }
+
+
+                setMessage(
+
+                    `Medicine ${
+                        medicine.is_active
+                            ? "deactivated"
+                            : "activated"
+                    } successfully.`
+
+                );
+
+
+                await fetchMedicines();
+
+            } catch (err) {
+
+                console.error(
+                    "TOGGLE MEDICINE ERROR:",
+                    err
+                );
+
+                setError(
+                    err.message ||
+                    "Unable to update medicine."
+                );
+
+            }
+
+        };
+
+
+    // =========================================================
+    // LIVE SEARCH
+    // =========================================================
+
+    const filteredMedicines =
+        useMemo(() => {
+
+            const term =
+                searchTerm
+                    .trim()
+                    .toLowerCase();
+
+
+            if (!term) {
+
+                return medicines;
+
+            }
+
+
+            return medicines.filter(
+                (medicine) => {
+
+                    return (
+
+                        String(
+                            medicine.id || ""
+                        )
+                            .toLowerCase()
+                            .includes(term)
+
+                        ||
+
+                        String(
+                            medicine.name || ""
+                        )
+                            .toLowerCase()
+                            .includes(term)
+
+                        ||
+
+                        String(
+                            medicine.generic_name || ""
+                        )
+                            .toLowerCase()
+                            .includes(term)
+
+                        ||
+
+                        String(
+                            medicine.brand_name || ""
+                        )
+                            .toLowerCase()
+                            .includes(term)
+
+                        ||
+
+                        String(
+                            medicine.formulation || ""
+                        )
+                            .toLowerCase()
+                            .includes(term)
+
+                        ||
+
+                        String(
+                            medicine.strength || ""
+                        )
+                            .toLowerCase()
+                            .includes(term)
+
+                        ||
+
+                        String(
+                            medicine.unit || ""
+                        )
+                            .toLowerCase()
+                            .includes(term)
+
+                    );
+
+                }
+            );
+
+        }, [medicines, searchTerm]);
+
+
+    // =========================================================
+    // COUNTS
+    // =========================================================
+
+    const activeCount =
+        medicines.filter(
+            (medicine) =>
+                medicine.is_active
+        ).length;
+
+
+    const inactiveCount =
+        medicines.filter(
+            (medicine) =>
+                !medicine.is_active
+        ).length;
+
+
+    // =========================================================
+    // RENDER
+    // =========================================================
+
+    return (
+
+        <div>
+
+            {/* =================================================
+                TOP ACTION
+            ================================================= */}
+
+            <div className="d-flex justify-content-end mb-4">
+
+                <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={toggleForm}
                 >
-                  <option value="">
-                    Select formulation
-                  </option>
 
-                  <option value="Tablet">
-                    Tablet
-                  </option>
+                    <i
+                        className={`bi ${
+                            showForm
+                                ? "bi-x-lg"
+                                : "bi-capsule"
+                        } me-2`}
+                    ></i>
 
-                  <option value="Capsule">
-                    Capsule
-                  </option>
+                    {showForm
+                        ? "Close"
+                        : "Add Medicine"}
 
-                  <option value="Syrup">
-                    Syrup
-                  </option>
+                </button>
 
-                  <option value="Injection">
-                    Injection
-                  </option>
+            </div>
 
-                  <option value="Cream">
-                    Cream
-                  </option>
 
-                  <option value="Ointment">
-                    Ointment
-                  </option>
+            {/* =================================================
+                SUCCESS MESSAGE
+            ================================================= */}
 
-                  <option value="Drops">
-                    Drops
-                  </option>
+            {message && (
 
-                  <option value="Inhaler">
-                    Inhaler
-                  </option>
-
-                  <option value="Suspension">
-                    Suspension
-                  </option>
-                </select>
-              </div>
-
-              {/* Strength */}
-              <div className="col-md-6 col-lg-4">
-                <label className="form-label fw-semibold">
-                  Strength
-                </label>
-
-                <input
-                  type="text"
-                  className="form-control"
-                  name="strength"
-                  placeholder="e.g. 500"
-                  value={formData.strength}
-                  onChange={handleChange}
-                />
-              </div>
-
-              {/* Unit */}
-              <div className="col-md-6 col-lg-4">
-                <label className="form-label fw-semibold">
-                  Unit
-                </label>
-
-                <select
-                  className="form-select"
-                  name="unit"
-                  value={formData.unit}
-                  onChange={handleChange}
+                <div
+                    className="alert alert-success alert-dismissible fade show"
+                    role="alert"
                 >
-                  <option value="">
-                    Select unit
-                  </option>
 
-                  <option value="mg">
-                    mg
-                  </option>
+                    <i className="bi bi-check-circle-fill me-2"></i>
 
-                  <option value="g">
-                    g
-                  </option>
+                    {message}
 
-                  <option value="mcg">
-                    mcg
-                  </option>
+                    <button
+                        type="button"
+                        className="btn-close"
+                        onClick={() =>
+                            setMessage("")
+                        }
+                    ></button>
 
-                  <option value="ml">
-                    ml
-                  </option>
+                </div>
 
-                  <option value="%">
-                    %
-                  </option>
-                </select>
-              </div>
+            )}
 
-            </div>
 
-            {/* Buttons */}
-            <div className="mt-4 d-flex gap-2">
+            {/* =================================================
+                ERROR MESSAGE
+            ================================================= */}
 
-              <button
-                type="submit"
-                className="btn btn-primary px-4"
-              >
-                <i className="bi bi-plus-lg me-2"></i>
-                Add Medicine
-              </button>
+            {error && (
 
-              <button
-                type="button"
-                className="btn btn-outline-secondary px-4"
-                onClick={resetForm}
-              >
-                Clear
-              </button>
+                <div
+                    className="alert alert-danger alert-dismissible fade show"
+                    role="alert"
+                >
 
-            </div>
+                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
 
-          </form>
+                    {error}
 
-        </div>
-      </div>
+                    <button
+                        type="button"
+                        className="btn-close"
+                        onClick={() =>
+                            setError("")
+                        }
+                    ></button>
 
-      {/* Medicine List */}
-      <div className="card shadow-sm">
+                </div>
 
-        <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            )}
 
-          <div>
-            <h5 className="mb-1 fw-semibold">
-              Medicine List
-            </h5>
 
-            <small className="text-muted">
-              All medicines registered in the Medicine Master.
-            </small>
-          </div>
+            {/* =================================================
+                ADD MEDICINE FORM
+            ================================================= */}
 
-          <span className="badge bg-primary rounded-pill">
-            {medicines.length} Medicines
-          </span>
+            {showForm && (
 
-        </div>
+                <div
+                    className="card border-0 shadow-sm mb-4"
+                >
 
-        <div className="card-body p-0">
+                    <div className="card-header bg-white py-3">
 
-          {loading ? (
+                        <h5 className="fw-bold mb-1">
 
-            <div className="text-center py-5">
-              <div
-                className="spinner-border text-primary mb-3"
-                role="status"
-              ></div>
+                            <i className="bi bi-capsule me-2 text-primary"></i>
 
-              <p className="text-muted mb-0">
-                Loading medicines...
-              </p>
-            </div>
+                            Add Medicine
 
-          ) : medicines.length === 0 ? (
+                        </h5>
 
-            <div className="text-center py-5">
+                        <p className="text-muted mb-0 small">
 
-              <div className="fs-1 text-muted mb-3">
-                💊
-              </div>
+                            Enter the medicine details below.
 
-              <h5>
-                No medicines found
-              </h5>
+                        </p>
 
-              <p className="text-muted mb-0">
-                Add your first medicine using the form above.
-              </p>
+                    </div>
 
-            </div>
 
-          ) : (
+                    <div className="card-body">
 
-            <div className="table-responsive">
-
-              <table className="table table-hover align-middle mb-0">
-
-                <thead className="table-light">
-
-                  <tr>
-                    <th className="px-3">ID</th>
-                    <th>Medicine</th>
-                    <th>Generic Name</th>
-                    <th>Brand</th>
-                    <th>Formulation</th>
-                    <th>Strength</th>
-                    <th>Unit</th>
-                    <th>Status</th>
-                    <th className="text-center">
-                      Action
-                    </th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {medicines.map((medicine) => (
-
-                    <tr key={medicine.id}>
-
-                      <td className="px-3 text-muted">
-                        #{medicine.id}
-                      </td>
-
-                      <td>
-                        <strong>
-                          {medicine.name}
-                        </strong>
-                      </td>
-
-                      <td>
-                        {medicine.generic_name || "-"}
-                      </td>
-
-                      <td>
-                        {medicine.brand_name || "-"}
-                      </td>
-
-                      <td>
-                        <span className="badge bg-light text-dark border">
-                          {medicine.formulation}
-                        </span>
-                      </td>
-
-                      <td>
-                        {medicine.strength || "-"}
-                      </td>
-
-                      <td>
-                        {medicine.unit || "-"}
-                      </td>
-
-                      <td>
-
-                        {medicine.is_active ? (
-
-                          <span className="badge bg-success">
-                            Active
-                          </span>
-
-                        ) : (
-
-                          <span className="badge bg-secondary">
-                            Inactive
-                          </span>
-
-                        )}
-
-                      </td>
-
-                      <td className="text-center">
-
-                        <button
-                          type="button"
-                          className={`btn btn-sm ${
-                            medicine.is_active
-                              ? "btn-outline-danger"
-                              : "btn-outline-success"
-                          }`}
-                          onClick={() =>
-                            toggleMedicine(medicine)
-                          }
+                        <form
+                            onSubmit={handleSubmit}
                         >
-                          {medicine.is_active
-                            ? "Deactivate"
-                            : "Activate"}
-                        </button>
 
-                      </td>
+                            <div className="row g-3">
 
-                    </tr>
 
-                  ))}
+                                {/* MEDICINE NAME */}
 
-                </tbody>
+                                <div className="col-12 col-md-6 col-lg-4">
 
-              </table>
+                                    <label
+                                        className="form-label fw-semibold"
+                                    >
+
+                                        Medicine Name
+
+                                        <span className="text-danger">
+                                            {" "}*
+                                        </span>
+
+                                    </label>
+
+
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        name="name"
+                                        placeholder="e.g. Paracetamol"
+                                        value={
+                                            formData.name
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                        required
+                                    />
+
+                                </div>
+
+
+                                {/* GENERIC NAME */}
+
+                                <div className="col-12 col-md-6 col-lg-4">
+
+                                    <label
+                                        className="form-label fw-semibold"
+                                    >
+
+                                        Generic Name
+
+                                    </label>
+
+
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        name="generic_name"
+                                        placeholder="e.g. Paracetamol"
+                                        value={
+                                            formData.generic_name
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                    />
+
+                                </div>
+
+
+                                {/* BRAND NAME */}
+
+                                <div className="col-12 col-md-6 col-lg-4">
+
+                                    <label
+                                        className="form-label fw-semibold"
+                                    >
+
+                                        Brand Name
+
+                                    </label>
+
+
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        name="brand_name"
+                                        placeholder="e.g. Crocin"
+                                        value={
+                                            formData.brand_name
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                    />
+
+                                </div>
+
+
+                                {/* FORMULATION */}
+
+                                <div className="col-12 col-md-6 col-lg-4">
+
+                                    <label
+                                        className="form-label fw-semibold"
+                                    >
+
+                                        Formulation
+
+                                        <span className="text-danger">
+                                            {" "}*
+                                        </span>
+
+                                    </label>
+
+
+                                    <select
+                                        className="form-select"
+                                        name="formulation"
+                                        value={
+                                            formData.formulation
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                        required
+                                    >
+
+                                        <option value="">
+                                            Select formulation
+                                        </option>
+
+                                        <option value="Tablet">
+                                            Tablet
+                                        </option>
+
+                                        <option value="Capsule">
+                                            Capsule
+                                        </option>
+
+                                        <option value="Syrup">
+                                            Syrup
+                                        </option>
+
+                                        <option value="Injection">
+                                            Injection
+                                        </option>
+
+                                        <option value="Cream">
+                                            Cream
+                                        </option>
+
+                                        <option value="Ointment">
+                                            Ointment
+                                        </option>
+
+                                        <option value="Drops">
+                                            Drops
+                                        </option>
+
+                                        <option value="Inhaler">
+                                            Inhaler
+                                        </option>
+
+                                        <option value="Suspension">
+                                            Suspension
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+
+                                {/* STRENGTH */}
+
+                                <div className="col-12 col-md-6 col-lg-4">
+
+                                    <label
+                                        className="form-label fw-semibold"
+                                    >
+
+                                        Strength
+
+                                    </label>
+
+
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        name="strength"
+                                        placeholder="e.g. 500"
+                                        value={
+                                            formData.strength
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                    />
+
+                                </div>
+
+
+                                {/* UNIT */}
+
+                                <div className="col-12 col-md-6 col-lg-4">
+
+                                    <label
+                                        className="form-label fw-semibold"
+                                    >
+
+                                        Unit
+
+                                    </label>
+
+
+                                    <select
+                                        className="form-select"
+                                        name="unit"
+                                        value={
+                                            formData.unit
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                    >
+
+                                        <option value="">
+                                            Select unit
+                                        </option>
+
+                                        <option value="mg">
+                                            mg
+                                        </option>
+
+                                        <option value="g">
+                                            g
+                                        </option>
+
+                                        <option value="mcg">
+                                            mcg
+                                        </option>
+
+                                        <option value="ml">
+                                            ml
+                                        </option>
+
+                                        <option value="%">
+                                            %
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+
+                            {/* FORM BUTTONS */}
+
+                            <div className="d-flex flex-wrap gap-2 mt-4">
+
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    disabled={
+                                        submitting
+                                    }
+                                >
+
+                                    {submitting ? (
+
+                                        <>
+
+                                            <span
+                                                className="spinner-border spinner-border-sm me-2"
+                                            ></span>
+
+                                            Adding...
+
+                                        </>
+
+                                    ) : (
+
+                                        <>
+
+                                            <i className="bi bi-plus-lg me-2"></i>
+
+                                            Add Medicine
+
+                                        </>
+
+                                    )}
+
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={
+                                        resetForm
+                                    }
+                                    disabled={
+                                        submitting
+                                    }
+                                >
+
+                                    <i className="bi bi-arrow-counterclockwise me-2"></i>
+
+                                    Clear
+
+                                </button>
+
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                </div>
+
+            )}
+
+
+            {/* =================================================
+                SEARCH + SUMMARY
+            ================================================= */}
+
+            <div
+                className="card border-0 shadow-sm mb-4"
+            >
+
+                <div className="card-body">
+
+                    <div className="row g-3 align-items-center">
+
+
+                        {/* SEARCH */}
+
+                        <div className="col-12 col-lg-8">
+
+                            <div className="input-group">
+
+                                <span className="input-group-text bg-white">
+
+                                    <i className="bi bi-search"></i>
+
+                                </span>
+
+
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Search by medicine name, generic name, brand, formulation..."
+                                    value={
+                                        searchTerm
+                                    }
+                                    onChange={(event) =>
+                                        setSearchTerm(
+                                            event.target.value
+                                        )
+                                    }
+                                />
+
+
+                                {searchTerm && (
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        onClick={() =>
+                                            setSearchTerm("")
+                                        }
+                                        title="Clear search"
+                                    >
+
+                                        <i className="bi bi-x-lg"></i>
+
+                                    </button>
+
+                                )}
+
+                            </div>
+
+
+                            <small className="text-muted d-block mt-2">
+
+                                Results update automatically while typing.
+
+                            </small>
+
+                        </div>
+
+
+                        {/* COUNTS */}
+
+                        <div className="col-12 col-lg-4">
+
+                            <div className="d-flex justify-content-lg-end gap-2 flex-wrap">
+
+                                <span className="badge bg-primary fs-6 px-3 py-2">
+
+                                    <i className="bi bi-capsule me-2"></i>
+
+                                    {searchTerm
+                                        ? `${filteredMedicines.length} / ${medicines.length}`
+                                        : medicines.length}
+
+                                    {" "}Medicines
+
+                                </span>
+
+
+                                <span className="badge bg-success fs-6 px-3 py-2">
+
+                                    {activeCount} Active
+
+                                </span>
+
+
+                                <span className="badge bg-secondary fs-6 px-3 py-2">
+
+                                    {inactiveCount} Inactive
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
 
             </div>
 
-          )}
+
+            {/* =================================================
+                MEDICINE LIST
+            ================================================= */}
+
+            <div
+                className="card border-0 shadow-sm"
+            >
+
+                <div
+                    className="card-header bg-white py-3"
+                >
+
+                    <div className="d-flex justify-content-between align-items-center">
+
+                        <div>
+
+                            <h5 className="fw-bold mb-1">
+
+                                Medicine List
+
+                            </h5>
+
+                            <p className="text-muted mb-0 small">
+
+                                All medicines registered in the Medicine Master.
+
+                            </p>
+
+                        </div>
+
+
+                        <i className="bi bi-capsule-pill fs-3 text-primary"></i>
+
+                    </div>
+
+                </div>
+
+
+                <div className="card-body p-0">
+
+
+                    {/* LOADING */}
+
+                    {loading ? (
+
+                        <div className="text-center py-5">
+
+                            <div
+                                className="spinner-border text-primary mb-3"
+                                role="status"
+                            ></div>
+
+
+                            <p className="text-muted mb-0">
+
+                                Loading medicines...
+
+                            </p>
+
+                        </div>
+
+                    )
+
+
+                    /* EMPTY */
+
+                    : filteredMedicines.length === 0 ? (
+
+                        <div className="text-center py-5 px-3">
+
+                            <i className="bi bi-capsule fs-1 text-muted"></i>
+
+
+                            <h5 className="mt-3">
+
+                                No medicines found
+
+                            </h5>
+
+
+                            <p className="text-muted mb-0">
+
+                                {searchTerm
+                                    ? "No medicines match your search."
+                                    : "Add your first medicine using the button above."}
+
+                            </p>
+
+                        </div>
+
+                    )
+
+
+                    /* TABLE */
+
+                    : (
+
+                        <div className="table-responsive">
+
+                            <table className="table table-hover align-middle mb-0">
+
+                                <thead className="table-light">
+
+                                    <tr>
+
+                                        <th className="px-3">
+                                            ID
+                                        </th>
+
+                                        <th>
+                                            Medicine
+                                        </th>
+
+                                        <th>
+                                            Generic Name
+                                        </th>
+
+                                        <th>
+                                            Brand
+                                        </th>
+
+                                        <th>
+                                            Formulation
+                                        </th>
+
+                                        <th>
+                                            Strength
+                                        </th>
+
+                                        <th>
+                                            Unit
+                                        </th>
+
+                                        <th>
+                                            Status
+                                        </th>
+
+                                        <th className="text-center">
+                                            Action
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+
+                                <tbody>
+
+                                    {filteredMedicines.map(
+                                        (medicine) => (
+
+                                            <tr
+                                                key={
+                                                    medicine.id
+                                                }
+                                            >
+
+                                                {/* ID */}
+
+                                                <td className="px-3 text-muted">
+
+                                                    #{medicine.id}
+
+                                                </td>
+
+
+                                                {/* NAME */}
+
+                                                <td>
+
+                                                    <div className="d-flex align-items-center">
+
+                                                        <div
+                                                            className="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center me-2"
+                                                            style={{
+                                                                width: "38px",
+                                                                height: "38px",
+                                                            }}
+                                                        >
+
+                                                            <i className="bi bi-capsule"></i>
+
+                                                        </div>
+
+
+                                                        <strong>
+
+                                                            {
+                                                                medicine.name
+                                                            }
+
+                                                        </strong>
+
+                                                    </div>
+
+                                                </td>
+
+
+                                                {/* GENERIC */}
+
+                                                <td>
+
+                                                    {
+                                                        medicine.generic_name ||
+                                                        "-"
+                                                    }
+
+                                                </td>
+
+
+                                                {/* BRAND */}
+
+                                                <td>
+
+                                                    {
+                                                        medicine.brand_name ||
+                                                        "-"
+                                                    }
+
+                                                </td>
+
+
+                                                {/* FORMULATION */}
+
+                                                <td>
+
+                                                    <span className="badge bg-light text-dark border">
+
+                                                        {
+                                                            medicine.formulation
+                                                        }
+
+                                                    </span>
+
+                                                </td>
+
+
+                                                {/* STRENGTH */}
+
+                                                <td>
+
+                                                    {
+                                                        medicine.strength ||
+                                                        "-"
+                                                    }
+
+                                                </td>
+
+
+                                                {/* UNIT */}
+
+                                                <td>
+
+                                                    {
+                                                        medicine.unit ||
+                                                        "-"
+                                                    }
+
+                                                </td>
+
+
+                                                {/* STATUS */}
+
+                                                <td>
+
+                                                    {medicine.is_active ? (
+
+                                                        <span className="badge bg-success">
+
+                                                            <i className="bi bi-check-circle me-1"></i>
+
+                                                            Active
+
+                                                        </span>
+
+                                                    ) : (
+
+                                                        <span className="badge bg-secondary">
+
+                                                            <i className="bi bi-x-circle me-1"></i>
+
+                                                            Inactive
+
+                                                        </span>
+
+                                                    )}
+
+                                                </td>
+
+
+                                                {/* ACTION */}
+
+                                                <td className="text-center">
+
+                                                    <button
+                                                        type="button"
+                                                        className={`btn btn-sm ${
+                                                            medicine.is_active
+                                                                ? "btn-outline-danger"
+                                                                : "btn-outline-success"
+                                                        }`}
+                                                        onClick={() =>
+                                                            toggleMedicine(
+                                                                medicine
+                                                            )
+                                                        }
+                                                        title={
+                                                            medicine.is_active
+                                                                ? "Deactivate medicine"
+                                                                : "Activate medicine"
+                                                        }
+                                                    >
+
+                                                        <i
+                                                            className={`bi ${
+                                                                medicine.is_active
+                                                                    ? "bi-toggle-off"
+                                                                    : "bi-toggle-on"
+                                                            } me-1`}
+                                                        ></i>
+
+
+                                                        {medicine.is_active
+                                                            ? "Deactivate"
+                                                            : "Activate"}
+
+                                                    </button>
+
+                                                </td>
+
+                                            </tr>
+
+                                        )
+                                    )}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    )}
+
+                </div>
+
+            </div>
 
         </div>
-      </div>
 
-    </div>
-  );
+    );
 }
 
 export default Medicines;
-

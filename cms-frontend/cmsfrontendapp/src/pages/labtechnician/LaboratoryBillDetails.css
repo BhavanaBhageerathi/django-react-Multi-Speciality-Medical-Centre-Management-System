@@ -1,0 +1,24 @@
+/* =========================================
+   Laboratory Bill Details - Bootstrap Unified
+   ========================================= */
+
+.bill-document-card {
+    max-width: 900px;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: #ffffff !important;
+        padding: 0 !important;
+    }
+
+    .bill-document-card {
+        max-width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+}

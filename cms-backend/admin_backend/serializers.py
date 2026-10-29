@@ -1,6 +1,34 @@
+from datetime import date
+
 from rest_framework import serializers
 
 from .models import Staff, Department, Medicine, LabTest
+
+
+# Minimum age required to be added as staff, by role.
+# Any role not listed here falls back to 18.
+MIN_AGE_BY_ROLE = {
+    "RECEPTIONIST": 18,
+    "DOCTOR": 23,
+    "PHARMACIST": 23,
+    "LAB_TECHNICIAN": 18,
+}
+
+
+def calculate_age(date_of_birth):
+    today = date.today()
+
+    had_birthday_this_year = (
+        (today.month, today.day)
+        >= (date_of_birth.month, date_of_birth.day)
+    )
+
+    years = today.year - date_of_birth.year
+
+    if not had_birthday_this_year:
+        years -= 1
+
+    return years
 
 
 class StaffSerializer(serializers.ModelSerializer):
@@ -25,6 +53,8 @@ class StaffSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    age = serializers.ReadOnlyField()
+
     class Meta:
         model = Staff
 
@@ -35,6 +65,10 @@ class StaffSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "role",
+            "date_of_birth",
+            "age",
+            "address",
+            "phone_number",
             "is_active",
             "created_at",
         ]
@@ -45,6 +79,7 @@ class StaffSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
+            "age",
             "created_at",
         ]
 
@@ -52,6 +87,17 @@ class StaffSerializer(serializers.ModelSerializer):
 class StaffCreateSerializer(serializers.Serializer):
 
     username = serializers.CharField(max_length=150)
+
+    def validate_username(self, value):
+        from django.contrib.auth.models import User
+
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError(
+                "This username is already taken."
+            )
+
+        return value
+
     first_name = serializers.CharField(
         max_length=150,
         required=False
@@ -61,13 +107,27 @@ class StaffCreateSerializer(serializers.Serializer):
         required=False
     )
     email = serializers.EmailField(
-        required=False
+        required=True
     )
     password = serializers.CharField(
         write_only=True
     )
     role = serializers.ChoiceField(
         choices=Staff.ROLE_CHOICES
+    )
+    date_of_birth = serializers.DateField(
+        required=True
+    )
+    address = serializers.CharField(
+        required=True,
+        allow_blank=False
+    )
+    phone_number = serializers.RegexField(
+        regex=r"^\d{10}$",
+        required=True,
+        error_messages={
+            "invalid": "Phone number must be exactly 10 digits."
+        },
     )
     department = serializers.PrimaryKeyRelatedField(
         queryset=Department.objects.filter(is_active=True),
@@ -81,6 +141,15 @@ class StaffCreateSerializer(serializers.Serializer):
     is_active = serializers.BooleanField(
         default=True
     )
+
+    def validate_date_of_birth(self, value):
+
+        if value >= date.today():
+            raise serializers.ValidationError(
+                "Date of birth must be in the past."
+            )
+
+        return value
 
     def validate(self, data):
 
@@ -99,6 +168,23 @@ class StaffCreateSerializer(serializers.Serializer):
                     "Consultation Fee is required for a Doctor."
                 })
 
+        date_of_birth = data.get("date_of_birth")
+
+        if date_of_birth:
+
+            age = calculate_age(date_of_birth)
+
+            min_age = MIN_AGE_BY_ROLE.get(role, 18)
+
+            if age < min_age:
+                raise serializers.ValidationError({
+                    "date_of_birth": (
+                        f"A {role.replace('_', ' ').title()} must be "
+                        f"at least {min_age} years old. "
+                        f"This staff member is {age}."
+                    )
+                })
+
         return data
 
 class StaffUpdateSerializer(serializers.Serializer):
@@ -115,6 +201,23 @@ class StaffUpdateSerializer(serializers.Serializer):
 
     email = serializers.EmailField(
         required=False
+    )
+
+    date_of_birth = serializers.DateField(
+        required=False
+    )
+
+    address = serializers.CharField(
+        required=False,
+        allow_blank=False
+    )
+
+    phone_number = serializers.RegexField(
+        regex=r"^\d{10}$",
+        required=False,
+        error_messages={
+            "invalid": "Phone number must be exactly 10 digits."
+        },
     )
 
     department = serializers.PrimaryKeyRelatedField(
@@ -137,9 +240,38 @@ class StaffUpdateSerializer(serializers.Serializer):
         required=False
     )
 
+    def validate_date_of_birth(self, value):
+
+        if value >= date.today():
+            raise serializers.ValidationError(
+                "Date of birth must be in the past."
+            )
+
+        return value
+
     def validate(self, data):
 
         staff = self.instance
+
+        date_of_birth = data.get(
+            "date_of_birth",
+            staff.date_of_birth
+        )
+
+        if date_of_birth:
+
+            age = calculate_age(date_of_birth)
+
+            min_age = MIN_AGE_BY_ROLE.get(staff.role, 18)
+
+            if age < min_age:
+                raise serializers.ValidationError({
+                    "date_of_birth": (
+                        f"A {staff.role.replace('_', ' ').title()} must "
+                        f"be at least {min_age} years old. "
+                        f"This staff member is {age}."
+                    )
+                })
 
         if staff.role == "DOCTOR":
 

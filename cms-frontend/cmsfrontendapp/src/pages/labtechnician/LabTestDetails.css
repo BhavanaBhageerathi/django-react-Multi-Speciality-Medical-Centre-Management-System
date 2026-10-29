@@ -1,0 +1,13 @@
+/* =========================================
+   Lab Test Details - Bootstrap Unified
+   ========================================= */
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: #ffffff !important;
+    }
+}

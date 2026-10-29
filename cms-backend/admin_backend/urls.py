@@ -8,6 +8,7 @@ from .views import (
     StaffListView,
     StaffCreateView,
     StaffDetailView,
+    DoctorListView,
     DepartmentListCreateView,
     DepartmentDetailView,
     MedicineListCreateView,
@@ -91,5 +92,11 @@ path(
     "lab-tests/<int:pk>/",
     LabTestDetailView.as_view(),
     name="lab-test-detail"
+),
+
+path(
+    "doctors/",
+    DoctorListView.as_view(),
+    name="doctor-list",
 ),
 ]

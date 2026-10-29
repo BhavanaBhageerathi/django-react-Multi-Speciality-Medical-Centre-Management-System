@@ -1,0 +1,22 @@
+/* =========================================
+   Lab Dashboard Styles
+   ========================================= */
+
+.lab-card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lab-card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+.spin-animation {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}

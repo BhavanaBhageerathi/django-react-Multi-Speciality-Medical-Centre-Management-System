@@ -1,5 +1,14 @@
+from datetime import date
+
+from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import User
+
+
+phone_regex = RegexValidator(
+    regex=r"^\d{10}$",
+    message="Phone number must be exactly 10 digits.",
+)
 
 
 class Department(models.Model):
@@ -36,13 +45,49 @@ class Staff(models.Model):
         choices=ROLE_CHOICES
     )
 
-    is_active = models.BooleanField(
-        default=True
+    date_of_birth = models.DateField(
+        null=True,
+        blank=True
     )
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
+    address = models.TextField(
+        blank=True
     )
+
+    phone_number = models.CharField(
+        max_length=10,
+        blank=True,
+        validators=[phone_regex]
+    )
+
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def age(self):
+        """
+        Age is calculated from date_of_birth rather than
+        stored directly, so it's always accurate and never
+        goes stale.
+        """
+
+        if not self.date_of_birth:
+            return None
+
+        today = date.today()
+
+        had_birthday_this_year = (
+            (today.month, today.day)
+            >= (self.date_of_birth.month, self.date_of_birth.day)
+        )
+
+        years = today.year - self.date_of_birth.year
+
+        if not had_birthday_this_year:
+            years -= 1
+
+        return years
 
     def save(self, *args, **kwargs):
 
@@ -55,16 +100,11 @@ class Staff(models.Model):
                 "LAB_TECHNICIAN": "LAB",
             }
 
-            prefix = prefixes.get(
-                self.role,
-                "STF"
-            )
+            prefix = prefixes.get(self.role, "STF")
 
             last_staff = (
                 Staff.objects
-                .filter(
-                    staff_id__startswith=prefix
-                )
+                .filter(staff_id__startswith=prefix)
                 .order_by("-staff_id")
                 .first()
             )
@@ -73,24 +113,16 @@ class Staff(models.Model):
                 last_number = int(
                     last_staff.staff_id[len(prefix):]
                 )
-
                 next_number = last_number + 1
-
             else:
                 next_number = 1
 
-            self.staff_id = (
-                f"{prefix}{next_number:03d}"
-            )
+            self.staff_id = f"{prefix}{next_number:03d}"
 
         super().save(*args, **kwargs)
 
     def __str__(self):
-
-        return (
-            f"{self.staff_id} - "
-            f"{self.user.get_full_name()}"
-        )
+        return f"{self.staff_id} - {self.user.get_full_name()}"
 
 
 class DoctorProfile(models.Model):
@@ -165,16 +197,24 @@ class Medicine(models.Model):
 
 
 class LabTest(models.Model):
-
     test_code = models.CharField(
         max_length=30,
         unique=True
     )
-
     test_name = models.CharField(
         max_length=200
     )
 
+    # Temporary: nullable while existing LabTest records are migrated
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.PROTECT,
+        related_name="lab_tests",
+        null=True,
+        blank=True
+    )
+
+    # Temporary field. Will be removed after existing data is mapped.
     category = models.CharField(
         max_length=100,
         blank=True

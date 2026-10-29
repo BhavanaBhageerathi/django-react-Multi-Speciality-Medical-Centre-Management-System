@@ -7,10 +7,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from rest_framework.generics import ListAPIView
-from .serializers import StaffSerializer
-
-from .models import Staff, Department, Medicine, LabTest
+from .models import Staff, Department, Medicine, LabTest, DoctorProfile
 from .permissions import IsAdminUser
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -18,7 +15,6 @@ from django.db import transaction
 from rest_framework.generics import (
     ListAPIView,
     CreateAPIView,
-    RetrieveUpdateAPIView,
 )
 
 from .serializers import (
@@ -135,12 +131,13 @@ class StaffCreateView(CreateAPIView):
             staff = Staff.objects.create(
                 user=user,
                 role=data["role"],
+                date_of_birth=data["date_of_birth"],
+                address=data["address"],
+                phone_number=data["phone_number"],
                 is_active=data.get("is_active", True),
             )
 
             if data["role"] == "DOCTOR":
-
-                from .models import DoctorProfile
 
                 DoctorProfile.objects.create(
                     staff=staff,
@@ -200,6 +197,15 @@ class StaffDetailView(APIView):
             if "email" in data:
                 user.email = data["email"]
 
+            if "date_of_birth" in data:
+                staff.date_of_birth = data["date_of_birth"]
+
+            if "address" in data:
+                staff.address = data["address"]
+
+            if "phone_number" in data:
+                staff.phone_number = data["phone_number"]
+
             # Update password
             if "password" in data:
                 user.set_password(
@@ -218,8 +224,6 @@ class StaffDetailView(APIView):
 
             # Update Doctor information
             if staff.role == "DOCTOR":
-
-                from .models import DoctorProfile
 
                 doctor = get_object_or_404(
                     DoctorProfile,
@@ -240,16 +244,71 @@ class StaffDetailView(APIView):
             StaffSerializer(staff).data
         )
 
-class DepartmentListCreateView(APIView):
+class DoctorListView(APIView):
 
-    permission_classes = [
-        IsAuthenticated,
-        IsAdminUser
-    ]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
 
-        departments = Department.objects.all().order_by("name")
+        department_id = request.query_params.get("department")
+
+        doctors = (
+            DoctorProfile.objects
+            .select_related(
+                "staff__user",
+                "department",
+            )
+            .filter(
+                staff__is_active=True,
+            )
+            .order_by(
+                "staff__user__first_name",
+                "staff__user__last_name",
+            )
+        )
+
+        if department_id:
+            doctors = doctors.filter(
+                department_id=department_id
+            )
+
+        data = []
+
+        for doctor in doctors:
+            data.append({
+                "id": doctor.id,
+                "staff_id": doctor.staff.staff_id,
+                "name": doctor.staff.user.get_full_name(),
+                "department": doctor.department.id,
+                "department_name": doctor.department.name,
+                "consultation_fee": str(
+                    doctor.consultation_fee
+                ),
+            })
+
+        return Response(data)
+
+class DepartmentListCreateView(APIView):
+
+    def get_permissions(self):
+
+        if self.request.method == "GET":
+            return [
+                IsAuthenticated()
+            ]
+
+        return [
+            IsAuthenticated(),
+            IsAdminUser()
+        ]
+
+    def get(self, request):
+
+        departments = (
+            Department.objects
+            .all()
+            .order_by("name")
+        )
 
         serializer = DepartmentSerializer(
             departments,
@@ -264,7 +323,9 @@ class DepartmentListCreateView(APIView):
             data=request.data
         )
 
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(
+            raise_exception=True
+        )
 
         serializer.save()
 
@@ -272,7 +333,6 @@ class DepartmentListCreateView(APIView):
             serializer.data,
             status=201
         )
-
 
 class DepartmentDetailView(APIView):
 
@@ -284,8 +344,8 @@ class DepartmentDetailView(APIView):
     def get_object(self, pk):
 
        return get_object_or_404(
-    Department,
-    pk=pk
+            Department,
+            pk=pk
 )
 
     def get(self, request, pk):

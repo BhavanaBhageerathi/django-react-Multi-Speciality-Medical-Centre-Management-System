@@ -21,8 +21,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@s615$m5j7l)kv)^03+qcy_09bt!=&v^q!xo(k5zaw#mrpf)08'
+import os
 
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -41,6 +42,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'admin_backend',
     'corsheaders',
+    'receptionist_backend',
+    'doctor_backend',
+    'pharmacist_backend',
+    'lab_technician'
 ]
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -136,8 +141,8 @@ MAILERS = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=3),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
 CORS_ALLOWED_ORIGINS = [

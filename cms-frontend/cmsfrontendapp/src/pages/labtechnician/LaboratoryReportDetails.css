@@ -1,0 +1,30 @@
+/* =========================================
+   Laboratory Report Details - Bootstrap Unified
+   ========================================= */
+
+.report-document-card {
+    max-width: 960px;
+}
+
+.report-result-content {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: #ffffff !important;
+        padding: 0 !important;
+    }
+
+    .report-document-card {
+        max-width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+}

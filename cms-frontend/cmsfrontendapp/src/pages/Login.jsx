@@ -9,6 +9,8 @@ function Login() {
   const handleLogin = async (event) => {
     event.preventDefault();
 
+    console.log("LOGIN BUTTON CLICKED");
+
     setError("");
     setLoading(true);
 
@@ -59,6 +61,10 @@ function Login() {
         return;
       }
 
+      // Check the actual user information returned by backend
+      console.log("LOGGED IN USER:", userData);
+      console.log("USER ROLE:", userData.role);
+
       // Save user information
       localStorage.setItem("user", JSON.stringify(userData));
 
@@ -66,13 +72,13 @@ function Login() {
       if (userData.role === "ADMIN") {
         window.location.href = "/admin";
       } else if (userData.role === "DOCTOR") {
-        setError("Doctor dashboard is not available yet.");
+        window.location.href = "/doctor";
       } else if (userData.role === "RECEPTIONIST") {
-        setError("Receptionist dashboard is not available yet.");
+        window.location.href = "/receptionist";
       } else if (userData.role === "PHARMACIST") {
-        setError("Pharmacist dashboard is not available yet.");
+        window.location.href = "/pharmacist";
       } else if (userData.role === "LAB_TECHNICIAN") {
-        setError("Lab Technician dashboard is not available yet.");
+        window.location.href = "/lab-technician";
       } else {
         setError("Unknown user role.");
       }
@@ -87,7 +93,9 @@ function Login() {
 
   return (
     <div className="login-page">
+
       <div className="login-card">
+
         <h1>Clinic Management System</h1>
 
         <h2>Login</h2>
@@ -95,6 +103,7 @@ function Login() {
         <form onSubmit={handleLogin}>
 
           <div className="form-group">
+
             <label>Username</label>
 
             <input
@@ -106,9 +115,11 @@ function Login() {
               }
               required
             />
+
           </div>
 
           <div className="form-group">
+
             <label>Password</label>
 
             <input
@@ -120,6 +131,7 @@ function Login() {
               }
               required
             />
+
           </div>
 
           {error && (
@@ -137,7 +149,9 @@ function Login() {
           </button>
 
         </form>
+
       </div>
+
     </div>
   );
 }
